@@ -1,0 +1,52 @@
+FROM mariadb:10.6.7
+
+# Environment variables
+
+## Allow root's empty password
+ENV MYSQL_ALLOW_EMPTY_PASSWORD=true
+
+## Enable auto upgrade
+ENV MARIADB_AUTO_UPGRADE=true
+ENV MARIADB_DISABLE_UPGRADE_BACKUP=true
+
+# Databases
+COPY osmosis/database/docker/init/01-create-databases.sql /docker-entrypoint-initdb.d/01-create-databases.sql
+
+# Tables
+COPY osmosis/database/osmosis.structure.sql /docker-entrypoint-initdb.d/02-osmosis.structure.sql
+COPY osmosis/database/osmosis_track.structure.sql /docker-entrypoint-initdb.d/03-osmosis_track.structure.sql
+COPY osmosis/database/osmosis_settings.structure.sql /docker-entrypoint-initdb.d/04-osmosis_settings.structure.sql
+COPY osmosis/database/osmosis_conf.structure.sql /docker-entrypoint-initdb.d/05-osmosis_conf.structure.sql
+
+# PREPEND database selection to each file
+RUN sed -i '0,/^$/ s/^$/USE\ osmosis;\n/i' /docker-entrypoint-initdb.d/02-osmosis.structure.sql
+RUN sed -i '0,/^$/ s/^$/USE\ osmosis_track\;\n/' /docker-entrypoint-initdb.d/03-osmosis_track.structure.sql
+RUN sed -i '0,/^$/ s/^$/USE\ osmosis_settings\;\n/' /docker-entrypoint-initdb.d/04-osmosis_settings.structure.sql
+RUN sed -i '0,/^$/ s/^$/USE\ osmosis_conf\;\n/' /docker-entrypoint-initdb.d/05-osmosis_conf.structure.sql
+
+# Set default database for the rest of the scripts
+ENV MARIADB_DATABASE=osmosis
+
+# Data
+COPY osmosis_database/learn.sql /docker-entrypoint-initdb.d/15-learn.sql
+COPY osmosis_database/blog.sql /docker-entrypoint-initdb.d/16-blog.sql
+COPY osmosis_database/pages.sql /docker-entrypoint-initdb.d/17-pages.sql
+COPY osmosis_database/nodes.sql /docker-entrypoint-initdb.d/18-nodes.sql
+COPY osmosis_database/schools.sql /docker-entrypoint-initdb.d/19-schools.sql
+COPY osmosis_database/inventory.sql /docker-entrypoint-initdb.d/20-inventory.sql
+COPY osmosis_database/inventory_map.sql /docker-entrypoint-initdb.d/21-inventory_map.sql
+COPY osmosis_database/users.sql /docker-entrypoint-initdb.d/22-users.sql
+COPY osmosis_database/content_cards.sql /docker-entrypoint-initdb.d/23-content_cards.sql
+COPY osmosis_database/cohorts.sql /docker-entrypoint-initdb.d/24-cohorts.sql
+COPY osmosis_database/cohort_members.sql /docker-entrypoint-initdb.d/25-cohort_members.sql
+COPY osmosis_database/plans.sql /docker-entrypoint-initdb.d/26-plans.sql
+COPY osmosis_database/recurly.sql /docker-entrypoint-initdb.d/27-recurly.sql
+COPY osmosis_database/deals.sql /docker-entrypoint-initdb.d/28-deals.sql
+COPY osmosis_database/navs.sql /docker-entrypoint-initdb.d/29-navs.sql
+COPY osmosis_database/programs.sql /docker-entrypoint-initdb.d/30-programs.sql
+COPY osmosis_database/products.sql /docker-entrypoint-initdb.d/31-products.sql
+COPY osmosis_database/product_defaults.sql /docker-entrypoint-initdb.d/32-product_defaults.sql
+COPY osmosis_database/custom.sql /docker-entrypoint-initdb.d/33-custom.sql
+
+# Start the DB
+EXPOSE 3306

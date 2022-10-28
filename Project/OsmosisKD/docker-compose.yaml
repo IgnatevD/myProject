@@ -1,0 +1,117 @@
+# @format
+
+version: "3.9"
+services:
+  mariadb:
+    image: osmosis-mariadb
+    build:
+      context: .
+      dockerfile: Dockerfile.mariadb
+    volumes:
+      - osmosis-database:/var/lib/mysql
+    expose:
+      - 3307
+    ports:
+      - 3307:3307
+    networks:
+      - osmosis-net
+  neptune:
+    image: osmosis-neptune
+    build:
+      context: .
+      dockerfile: Dockerfile.neptune
+    ports:
+      - 8182:8182
+    networks:
+      - osmosis-net
+    volumes:
+      - osmosis-graphdb:/opt/gremlin-server/graphs
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.8.0
+    environment:
+      NODE_ENV: local
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      - osmosis-net
+    volumes:
+      - osmosis-elasticsearch:/usr/share/elasticsearch/data
+  redis:
+    image: redis:6.2.7-alpine3.15
+    ports:
+      - 6379:6379
+    networks:
+      - osmosis-net
+    volumes:
+      - osmosis-redis:/data
+  www:
+    # command: ./cache ignore
+    depends_on:
+      - mariadb
+      - neptune
+      - elasticsearch
+      - redis
+    image: osmosis-www
+    build:
+      context: .
+      dockerfile: Dockerfile.osmosis
+    volumes:
+      - osmosis-cache:/var/osmosis/data/cache
+      - ./osmosis:/www/osmosis
+      - ./osmosis_static:/var/osmosis/osmosis_static
+      - ./osmosis_schedules:/var/osmosis/osmosis_schedules
+      - ./megagrid:/var/osmosis/megagrid
+      - ./.conf/osmosis.js:/www/.conf/osmosis.js
+      - ./.env.local:/www/osmosis/.env.local
+    ports:
+      - 3000:3000
+    networks:
+      - osmosis-net
+    environment:
+      NODE_ENV: local
+  webpack:
+    depends_on:
+      - www
+    image: osmosis-www
+    pull_policy: never
+    command: node webpack
+    volumes:
+      - ./osmosis:/www/osmosis
+      - ./.env.local:/www/osmosis/.env.local
+  admin:
+    depends_on:
+      - www
+    image: osmosis-www
+    pull_policy: never
+    command: node osmosis admin
+    volumes:
+      - osmosis-cache:/var/osmosis/data/cache
+      - ./osmosis:/www/osmosis
+      - ./osmosis_static:/var/osmosis/osmosis_static
+      - ./.conf/osmosis.js:/www/.conf/osmosis.js
+      - ./.env.local:/www/osmosis/.env.local
+    ports:
+      - 3005:3005
+    networks:
+      - osmosis-net
+    environment:
+      NODE_ENV: local
+
+volumes:
+  osmosis-database:
+  osmosis-elasticsearch:
+  osmosis-redis:
+  osmosis-graphdb:
+  osmosis-cache:
+
+networks:
+  osmosis-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.18.1.0/24

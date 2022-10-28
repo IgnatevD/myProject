@@ -1,0 +1,30 @@
+FROM tinkerpop/gremlin-server:3.5.2
+
+# As we have an AWS Neptune cluster version 1.1.1.0 and this supports Gremlin
+# query language 3.5.2, we use the same version for docker.
+# https://docs.aws.amazon.com/neptune/latest/userguide/engine-releases-1.1.1.0.html
+
+# A note on why "dumb-init" is required here:
+# The official image for the gremlin-server, will not run the process with PID 1.
+# When sending the signal to stop the container, the init process will NOT forward
+# the signal to the gremlin-server process, making it die ungracefully and therefore
+# not dumping the data into the file on disk. "dumb-init" helps circumvent this problem.
+# Sources:
+# https://github.com/bricaud/gremlin-server/issues/6
+# https://petermalmgren.com/signal-handling-docker/
+# https://vsupalov.com/docker-compose-stop-slow/
+# https://github.com/Yelp/dumb-init
+
+# To get the closest to AWS Neptune service, we followed the advice provided here:
+# https://stackoverflow.com/questions/71270999/tinkerpop-neptune-config-running-in-docker
+
+USER root
+RUN set -ex && apk add --quiet --no-cache dumb-init
+
+COPY neptune_config /opt/gremlin-server/conf
+
+WORKDIR /opt/gremlin-server
+EXPOSE 8182
+
+ENTRYPOINT ["dumb-init", "--rewrite", "15:2",  "--"]
+CMD ["bin/gremlin-server.sh","conf/gremlin-server.yaml"]

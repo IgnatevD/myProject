@@ -1,0 +1,26 @@
+FROM node:14.16.0-slim
+
+# Working directory
+WORKDIR /www/osmosis
+
+# Data dirs
+RUN mkdir -p \
+    /var/osmosis/tmp \
+    /var/osmosis/data/tmp \
+    /var/osmosis/data/temp/notes \
+    /var/osmosis/data/nav-map \
+    /var/osmosis/data/wikimirror \
+    /var/osmosis/data/activity \
+    /var/osmosis/data/cache \
+    /var/osmosis/data/upload \
+    /var/osmosis/data/node \
+    /var/osmosis/data/modules \
+    /var/osmosis/data/testimonials
+
+# Osmosis web app port
+EXPOSE 3000
+
+# Start osmosis www component by default
+# Upon first run, `./cache ignore` must be run beforehand
+# and use a volume to retain the built cache for subsequent runs
+CMD node osmosis
